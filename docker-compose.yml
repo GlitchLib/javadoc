@@ -1,8 +1,55 @@
-version: '3'
-services:
+version: "3.6"
+
+services: 
   web:
+    image: nginx:stable-alpine
+    restart: always
+    links:
+      - ci
+      - javadoc
+      - api
+    ports:
+      - 80:80
+    volumes:
+      - ./web/nginx.conf:/etc/nginx/nginx.conf:ro
   ci:
+    image: gocd/gocd-server:v18.9.0
+    restart: always
+    links:
+      - agent
+    volumes:
+      - ./.godata/addons:/godata/addons
+      - ./.godata/artifacts:/godata/artifacts
+      - ./.godata/config:/godata/config
+      - ./.godata/db:/godata/db
+      - ./.godata/logs:/godata/logs
+      - ./.godata/plugins:/godata/plugins
+      - ./.godata/.home:/home/go
+    ports:
+      - 8153:8080
+      - 8154:8443
   agent:
+    image: gocd/gocd-agent-alpine-3.8:v18.9.0
+    restart: always
+    volumes:
+      - ./.godata/.agent/config:/godata/config
+      - ./.godata/.agent/pipelines:/godata/pipelines
+      - ./.godata/.agent/logs:/godata/logs
+      - ./.godata/.agent/.home:/home/go
+    environment:  
+      - GO_SERVER_URL: https://ci:8443/go
   javadoc:
-  db:
+    build: ./javadoc
+    restart: always
+    ports:
+      - 3000:3000
   bot:
+    build: ./bot
+    restart: always
+  api:
+    build: ./api
+    restart: always
+    ports:
+      - 3000:3000
+    environment: 
+      - CI_SERVER: https://ci/go
